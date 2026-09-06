@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ruleta</title>
+<style>
+  :root{
+    --bg:#191320;
+    --panel:#221a29;
+    --panel-2:#2a2131;
+    --line:#43384c;
+    --text:#ece6ef;
+    --muted:#9c8ea6;
+    --gold:#c9a24b;
+    --gold-dim:#8a7238;
+    --ok:#5c8a6b;
+    --warn:#b5482e;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    min-height:100vh; background:var(--bg); color:var(--text);
+    font-family:-apple-system, system-ui, "Segoe UI", sans-serif;
+    display:flex; flex-direction:column; align-items:center; padding:28px 16px 60px;
+  }
+  .brand{text-align:center; margin-bottom:22px;}
+  .brand h1{
+    font-family:Georgia,'Iowan Old Style','Palatino Linotype',serif;
+    font-size:1.5rem; font-weight:600; letter-spacing:.5px; margin:0 0 4px; color:var(--text);
+  }
+  .brand .rule{width:56px; height:2px; background:var(--gold); margin:8px auto; border:none;}
+  .brand p{margin:0; font-size:.78rem; color:var(--muted); letter-spacing:.4px; text-transform:uppercase;}
+
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:4px;
+    padding:24px; width:100%; max-width:420px;
+  }
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:.72rem; letter-spacing:.6px; text-transform:uppercase; color:var(--muted); margin-bottom:6px;}
+  .field input[type=text]{
+    width:100%; padding:10px 12px; border-radius:3px; border:1px solid var(--line);
+    background:var(--panel-2); color:var(--text); font-size:.95rem;
+  }
+  .field input[type=text]:focus{outline:none; border-color:var(--gold);}
+  .seg-toggle{display:flex; border:1px solid var(--line); border-radius:3px; overflow:hidden; margin-top:8px;}
+  .seg-toggle button{
+    flex:1; padding:9px; border:none; background:var(--panel-2); color:var(--muted); cursor:pointer; font-size:.82rem;
+    border-right:1px solid var(--line);
+  }
+  .seg-toggle button:last-child{border-right:none;}
+  .seg-toggle button.active{background:var(--gold); color:#20161a; font-weight:600;}
+
+  button{font-family:inherit;}
+  .btn{
+    width:100%; padding:12px; border-radius:3px; border:1px solid var(--gold); margin-top:6px;
+    background:var(--gold); color:#20161a; font-weight:700; font-size:.9rem; letter-spacing:.3px;
+    cursor:pointer; text-transform:uppercase;
+  }
+  .btn:disabled{opacity:.35; cursor:not-allowed;}
+  .btn.outline{background:transparent; color:var(--gold);}
+  .btn.plain{
+    background:transparent; border:1px solid var(--line); color:var(--muted); text-transform:none; font-weight:500;
+  }
+  .link-btn{
+    background:none; border:none; color:var(--muted); text-decoration:underline; cursor:pointer; font-size:.78rem;
+    padding:4px 0; display:block; margin:0 auto;
+  }
+
+  /* ---- game shell ---- */
+  #game{width:100%; max-width:460px; display:none; flex-direction:column; align-items:center;}
+
+  .score-row{
+    display:flex; width:100%; border:1px solid var(--line); border-radius:4px; overflow:hidden; margin-bottom:18px;
+  }
+  .score-cell{
+    flex:1; padding:12px 10px; text-align:center; background:var(--panel); position:relative;
+  }
+  .score-cell + .score-cell{border-left:1px solid var(--line);}
+  .score-cell.turn::before{
+    content:""; position:absolute; top:0; left:0; right:0; height:2px; background:var(--gold);
+  }
+  .score-cell .pname{font-size:.78rem; letter-spacing:.4px; color:var(--muted); text-transform:uppercase;}
+  .score-cell .pscore{font-family:Georgia,serif; font-size:1.7rem; color:var(--gold); margin:2px 0 6px;}
+  .life-row{display:flex; justify-content:center; gap:4px;}
+  .life-icon{width:14px; height:14px; opacity:1;}
+  .life-icon.spent{opacity:.18;}
+
+  .turn-line{font-size:.78rem; color:var(--muted); margin-bottom:14px; letter-spacing:.3px;}
+  .turn-line b{color:var(--text); font-weight:600;}
+  .turn-line .roundtag{color:var(--gold-dim);}
+
+  .wheel-shell{position:relative; width:290px; height:290px; margin-bottom:16px;}
+  #wheelSvg{width:100%; height:100%; display:block;}
+  #wheelGroup{transform-origin:150px 150px; transition:transform 3.6s cubic-bezier(.14,.72,.14,1);}
+
+  .lock-note{font-size:.72rem; color:var(--muted); min-height:16px; margin-bottom:10px; text-align:center;}
+
+  /* ---- result panel ---- */
+  .result{
+    width:100%; background:var(--panel); border:1px solid var(--line); border-radius:4px;
+    padding:20px; display:none;
+  }
+  .result-head{display:flex; align-items:center; gap:8px; margin-bottom:12px;}
+  .dot{width:9px; height:9px; border-radius:50%; flex-shrink:0;}
+  .result-tag{font-size:.72rem; letter-spacing:1px; text-transform:uppercase; font-weight:700;}
+  .level-chip{
+    margin-left:auto; font-size:.65rem; color:var(--muted); border:1px solid var(--line); border-radius:2px;
+    padding:2px 7px; letter-spacing:.4px;
+  }
+  .result-text{font-size:1.02rem; line-height:1.55; margin-bottom:16px;}
+  .pos-diagram{width:100%; display:flex; justify-content:center; margin-bottom:14px;}
+  .pos-diagram svg{width:150px; height:150px;}
+  .pos-name{font-family:Georgia,serif; font-size:1.05rem; color:var(--gold); margin-bottom:4px;}
+
+  .timer-wrap{text-align:center; margin-bottom:14px;}
+  .timer-num{font-family:Georgia,serif; font-size:2.4rem; color:var(--gold);}
+
+  .action-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .action-row button{
+    flex:1; min-width:120px; padding:11px; border-radius:3px; border:1px solid var(--line);
+    background:var(--panel-2); color:var(--text); cursor:pointer; font-size:.85rem; font-weight:600;
+  }
+  .action-row button.confirm{background:var(--ok); border-color:var(--ok); color:#0d1f13;}
+  .action-row button.sub{background:var(--gold-dim); border-color:var(--gold-dim); color:#20161a;}
+  .action-row button:disabled{opacity:.3; cursor:not-allowed;}
+
+  .footer-controls{margin-top:24px; display:flex; gap:8px; width:100%; max-width:460px; flex-wrap:wrap;}
+  .footer-controls button{flex:1; min-width:120px;}
+
+  .modal-overlay{
+    display:none; position:fixed; inset:0; background:rgba(10,6,12,.8); align-items:flex-start; justify-content:center;
+    z-index:50; padding:40px 16px; overflow-y:auto;
+  }
+  .modal{
+    background:var(--panel); border:1px solid var(--gold-dim); border-radius:4px; padding:26px;
+    max-width:440px; width:100%; margin-bottom:40px;
+  }
+  .modal h2{font-family:Georgia,serif; color:var(--gold); margin:0 0 14px; font-size:1.25rem;}
+  .modal-close{float:right; background:none; border:none; color:var(--muted); font-size:1.1rem; cursor:pointer;}
+  .prize-btn{display:block; width:100%; margin-top:8px; padding:12px; border-radius:3px; border:1px solid var(--line); background:var(--panel-2); color:var(--text); cursor:pointer; text-align:left;}
+
+  /* ---- content manager ---- */
+  .cm-row{display:flex; gap:8px; margin-bottom:10px;}
+  .cm-row select, .cm-row input[type=text]{
+    flex:1; padding:9px 10px; border-radius:3px; border:1px solid var(--line); background:var(--panel-2); color:var(--text); font-size:.85rem;
+  }
+  textarea{
+    width:100%; padding:10px 12px; border-radius:3px; border:1px solid var(--line); background:var(--panel-2);
+    color:var(--text); font-size:.9rem; min-height:70px; resize:vertical; font-family:inherit;
+  }
+  .cm-list{margin-top:16px; border-top:1px solid var(--line); padding-top:12px; max-height:220px; overflow-y:auto;}
+  .cm-item{
+    display:flex; justify-content:space-between; gap:10px; align-items:flex-start; padding:8px 0;
+    border-bottom:1px solid var(--line); font-size:.82rem;
+  }
+  .cm-item .tag{font-size:.62rem; color:var(--gold); text-transform:uppercase; letter-spacing:.4px; display:block; margin-bottom:2px;}
+  .cm-item button{background:none; border:none; color:var(--warn); cursor:pointer; font-size:.9rem; flex-shrink:0;}
+  .cm-empty{color:var(--muted); font-size:.8rem; font-style:italic;}
+  .cm-actions{display:flex; gap:8px; margin-top:16px;}
+  .cm-actions button{flex:1;}
+  .cm-tabs{display:flex; gap:8px; margin-bottom:18px;}
+  .cm-tabs button{flex:1;}
+  .cm-tabs button.active{background:var(--gold); color:#20161a; border-color:var(--gold);}
+  .cm-section-title{font-size:.66rem; text-transform:uppercase; letter-spacing:.5px; color:var(--gold-dim); margin:14px 0 6px;}
+  .cm-section-title:first-child{margin-top:0;}
+  .cm-all-list{max-height:360px; overflow-y:auto;}
+  .cm-item.excluded div{opacity:.4; text-decoration:line-through;}
+  .cm-item button.toggle{color:var(--muted); border:1px solid var(--line); border-radius:3px; padding:3px 8px; font-size:.72rem;}
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+
+<div class="brand">
+  <h1>La Ruleta</h1>
+  <hr class="rule">
+  <p>Juego privado para dos</p>
+</div>
+
+<!-- SETUP -->
+<div class="card" id="setup">
+  <div class="field">
+    <label>Jugador 1</label>
+    <input type="text" id="p1name" placeholder="Nombre">
+    <div class="seg-toggle">
+      <button type="button" data-p="0" data-g="hombre" class="gtoggle active">Hombre</button>
+      <button type="button" data-p="0" data-g="mujer" class="gtoggle">Mujer</button>
+    </div>
+  </div>
+  <div class="field">
+    <label>Jugador 2</label>
+    <input type="text" id="p2name" placeholder="Nombre">
+    <div class="seg-toggle">
+      <button type="button" data-p="1" data-g="hombre" class="gtoggle">Hombre</button>
+      <button type="button" data-p="1" data-g="mujer" class="gtoggle active">Mujer</button>
+    </div>
+  </div>
+  <button class="btn" id="startBtn">Empezar</button>
+  <button class="link-btn" id="openManagerFromSetup">Gestionar mis retos personalizados</button>
+</div>
+
+<!-- GAME -->
+<div id="game">
+  <div class="score-row">
+    <div class="score-cell" id="box0">
+      <div class="pname" id="name0">—</div>
+      <div class="pscore" id="score0">0</div>
+      <div class="life-row" id="lives0"></div>
+    </div>
+    <div class="score-cell" id="box1">
+      <div class="pname" id="name1">—</div>
+      <div class="pscore" id="score1">0</div>
+      <div class="life-row" id="lives1"></div>
+    </div>
+  </div>
+
+  <div class="turn-line">Turno de <b id="turnName">—</b> · <span class="roundtag">Ronda <span id="roundNum">1</span></span></div>
+
+  <div class="wheel-shell">
+    <svg id="wheelSvg" viewBox="0 0 300 300">
+      <circle cx="150" cy="150" r="148" fill="#140f19" stroke="var(--line)" stroke-width="1"></circle>
+      <g id="wheelGroup"></g>
+      <circle cx="150" cy="150" r="34" fill="var(--panel)" stroke="var(--gold)" stroke-width="2"></circle>
+      <polygon points="150,26 138,4 162,4" fill="var(--gold)"></polygon>
+    </svg>
+  </div>
+
+  <button class="btn" id="spinBtn" style="max-width:220px;">Girar</button>
+  <div class="lock-note" id="lockNote"></div>
+
+  <div class="result" id="resultPanel">
+    <div class="result-head">
+      <span class="dot" id="resultDot"></span>
+      <span class="result-tag" id="resultTag">RETO</span>
+      <span class="level-chip hidden" id="levelChip"></span>
+    </div>
+
+    <div id="posBlock" class="hidden">
+      <div class="pos-name" id="posName"></div>
+      <div class="pos-diagram" id="posDiagram"></div>
+    </div>
+
+    <div class="result-text" id="resultText">—</div>
+
+    <div class="timer-wrap hidden" id="timerBox">
+      <div class="timer-num" id="timerDisplay">60</div>
+    </div>
+
+    <div class="action-row" id="actions"></div>
+  </div>
+
+  <div class="footer-controls">
+    <button class="btn plain" id="openManagerFromGame">Ver / añadir retos</button>
+    <button class="btn plain" id="endGameBtn">Terminar partida</button>
+    <button class="btn plain" id="resetBtn">Reiniciar</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalBox">
+    <button class="modal-close" id="modalCloseBtn">&times;</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   CONTENIDO BASE — puedes editar estas listas directamente aquí, o usar el
+   panel "Añadir retos" dentro del juego (se guarda en tu navegador).
+   ========================================================================= */
+const BUILTIN = {
+  dares: {
+    1: [
+      "Dale un beso lento de 15 segundos en el cuello a tu pareja.",
+      "Susúrrale al oído algo que te gustaría hacerle esta noche.",
+      "Quítate una prenda de ropa, a tu elección.",
+      "Dale un masaje de 1 minuto en los hombros, sin hablar.",
+      "Describe con detalle tu fantasía favorita con esta persona.",
+      "Deja que tu pareja te vende los ojos por el resto de esta ronda.",
+      "Fuera prenda",
+      "Excitar a tu pareja durante 30 segundos (sin tocar partes erógenas)",
+      "Flexiones mientras cuentas",
+    ],
+    2: [
+      "Quítale una prenda a tu pareja usando solo la boca.",
+      "Besa 3 partes del cuerpo de tu pareja que ella elija, empezando por el cuello.",
+      "Deja que tu pareja te dé una nalgada tan fuerte como ella quiera.",
+      "Haz un striptease de 30 segundos con la canción que tu pareja elija.",
+      "Muerde suavemente el lóbulo de la oreja de tu pareja mientras le dices algo subido de tono.",
+      "Deja que tu pareja te dé órdenes durante los próximos 2 minutos.",
+      "Chupete una parte del cuerpo en o cerca de zonas erógenas",
+      "Masaje sexual",
+      "Intercambiar papeles, de sumiso a dominante",
+      "Tapar los ojos de tu pareja y hacer lo que quieras durante 30 segundos",
+      "Hielo en cualquier parte del cuerpo",
+      "Ponerse en 4 sin interior y mover el culo por 10 segundos",
+      "Dejarse lamer el pecho, incluido los pezones",
+    ],
+    3: [
+      "Practica sexo oral a tu pareja durante 1 minuto, sin usar las manos.",
+      "Deja que tu pareja te ate las manos por el resto de la ronda.",
+      "Dale a tu pareja un masaje íntimo de 1 minuto, donde ella decida.",
+      "Cumple ahora mismo la última fantasía que tu pareja mencionó (si no hay ninguna, invéntala tú).",
+      "Deja que tu pareja tome el control total durante los próximos 3 minutos.",
+      "Rasurar la parte íntima a tu pareja",
+      "Paja con una parte del cuerpo que no sea boca o mano",
+      "Déjate lamer el culo 10 segundos",
+      "Grabar un sextape de 5 min y solo la otra persona se lo queda",
+      "Cera",
+    ],
+  },
+  truths: [
+    "¿Cuál es la fantasía sexual que nunca me has contado?",
+    "¿Qué es lo más atrevido que has pensado hacer conmigo pero no te has animado a pedir?",
+    "Del 1 al 10, ¿qué tan satisfecha/o estás con nuestra vida sexual? ¿Qué le subiría el número?",
+    "¿Hay algún lugar fuera de la cama donde te gustaría que lo hiciéramos?",
+    "¿Qué fue lo que más te excitó de mí la última vez que estuvimos juntos?",
+    "Si pudieras pedirme una cosa nueva para probar hoy, ¿cuál sería?",
+  ],
+  doubles: [
+    "Ambos deben desnudarse mutuamente sin usar las manos, solo la boca.",
+    "Ambos deben darse sexo oral al mismo tiempo (69) durante 1 minuto.",
+    "Ambos se dan un masaje corporal completo, mutuo, de 2 minutos, sin hablar.",
+    "Ambos deben mantener contacto visual mientras se besan lento durante 1 minuto completo.",
+    "Ambos deben ducharse juntos y enjabonarse mutuamente antes de continuar el juego.",
+  ],
+  positions: {
+    hombre: [
+      { key:"puente", name: "El Puente", desc: "Él sostiene el peso en posición de puente mientras ella se recuesta encima. Exige fuerza y equilibrio de él." },
+      { key:"silla", name: "La Silla", desc: "Él la sostiene de pie contra la pared, cargando todo el peso. Exige fuerza en piernas y brazos." },
+      { key:"carretilla", name: "Carretilla", desc: "Él sostiene las piernas de ella en el aire mientras mantiene el ritmo. Pura resistencia de él." },
+      { key:"loto_h", name: "Loto sosteniendo", desc: "Él se sienta y la sostiene mientras ella se enrosca alrededor. Exige control y fuerza del núcleo." },
+    ],
+    mujer: [
+      { key:"vaquera", name: "Vaquera", desc: "Ella controla el ritmo y el equilibrio sentada encima. Exige resistencia y control de cadera de ella." },
+      { key:"loto_inv", name: "Loto invertido", desc: "Ella controla el movimiento sentada de espaldas. Exige flexibilidad y equilibrio de ella." },
+      { key:"mariposa", name: "La Mariposa", desc: "Ella se apoya hacia atrás sosteniendo su propio peso en los brazos mientras marca el ritmo." },
+      { key:"cabalgata_r", name: "Cabalgata reversa", desc: "Ella lleva todo el control del movimiento y el ángulo, inclinada hacia adelante." },
+    ],
+  },
+};
+
+/* Diagramas esquemáticos (no explícitos) para cada posición, estilo pictograma. */
+const POS_DIAGRAMS = {
+  puente: `<svg viewBox="0 0 120 120"><line x1="10" y1="100" x2="110" y2="100" stroke="#43384c" stroke-width="2"/>
+    <path d="M25,95 Q60,55 95,95" fill="none" stroke="#c9a24b" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="25" cy="95" r="7" fill="#c9a24b"/><circle cx="95" cy="95" r="7" fill="#c9a24b"/>
+    <ellipse cx="60" cy="60" rx="9" ry="9" fill="#e14e77"/><line x1="60" y1="69" x2="60" y2="88" stroke="#e14e77" stroke-width="6" stroke-linecap="round"/>
+    <line x1="52" y1="85" x2="45" y2="70" stroke="#e14e77" stroke-width="5" stroke-linecap="round"/>
+    <line x1="68" y1="85" x2="75" y2="70" stroke="#e14e77" stroke-width="5" stroke-linecap="round"/></svg>`,
+  silla: `<svg viewBox="0 0 120 120"><line x1="100" y1="10" x2="100" y2="110" stroke="#43384c" stroke-width="3"/>
+    <circle cx="45" cy="30" r="8" fill="#c9a24b"/><line x1="45" y1="38" x2="45" y2="80" stroke="#c9a24b" stroke-width="6" stroke-linecap="round"/>
+    <line x1="45" y1="80" x2="32" y2="105" stroke="#c9a24b" stroke-width="6" stroke-linecap="round"/>
+    <line x1="45" y1="80" x2="58" y2="105" stroke="#c9a24b" stroke-width="6" stroke-linecap="round"/>
+    <line x1="45" y1="50" x2="70" y2="60" stroke="#c9a24b" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="80" cy="42" r="7" fill="#e14e77"/><line x1="80" y1="49" x2="72" y2="70" stroke="#e14e77" stroke-width="5" stroke-linecap="round"/>
+    <line x1="72" y1="70" x2="60" y2="55" stroke="#e14e77" stroke-width="5" stroke-linecap="round"/>
+    <line x1="72" y1="70" x2="88" y2="80" stroke="#e14e77" stroke-width="5" stroke-linecap="round"/></svg>`,
+  carretilla: `<svg viewBox="0 0 120 120"><line x1="10" y1="105" x2="110" y2="105" stroke="#43384c" stroke-width="2"/>
+    <circle cx="90" cy="35" r="8" fill="#c9a24b"/><line x1="90" y1="43" x2="90" y2="80" stroke="#c9a24b" stroke-width="6" stroke-linecap="round"/>
+    <line x1="90" y1="80" x2="80" y2="103" stroke="#c9a24b" stroke-width="6" stroke-linecap="round"/>
+    <line x1="90" y1="80" x2="100" y2="103" stroke="#c9a24b" stroke-width="6" stroke-linecap="round"/>
+    <line x1="90" y1="55" x2="60" y2="60" stroke="#c9a24b" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="25" cy="98" r="7" fill="#e14e77"/><line x1="25" y1="91" x2="55" y2="65" stroke="#e14e77" stroke-width="5" stroke-linecap="round"/>
+    <line x1="25" y1="98" x2="20" y2="80" stroke="#e14e77" stroke-width="4" stroke-linecap="round"/>
+    <line x1="55" y1="65" x2="58" y2="45" stroke="#e14e77" stroke-width="4" stroke-linecap="round"/>
+    <line x1="55" y1="65" x2="65" y2="45" stroke="#e14e77" stroke-width="4" stroke-linecap="round"/></svg>`,
+  loto_h: `<svg viewBox="0 0 120 120"><line x1="10" y1="105" x2="110" y2="105" stroke="#43384c" stroke-width="2"/>
+    <circle cx="55" cy="55" r="8" fill="#c9a24b"/><line x1="55" y1="63" x2="55" y2="90" stroke="#c9a24b" stroke-width="6" stroke-linecap="round"/>
+    <path d="M40,95 Q55,105 70,95" fill="none" stroke="#c9a24b" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="70" cy="45" r="7" fill="#e14e77"/><line x1="70" y1="52" x2="65" y2="88" stroke="#e14e77" stroke-width="5" stroke-linecap="round"/>
+    <path d="M65,60 Q40,70 45,88" fill="none" stroke="#e14e77" stroke-width="4" stroke-linecap="round"/></svg>`,
+  vaquera: `<svg viewBox="0 0 120 120"><line x1="10" y1="100" x2="110" y2="100" stroke="#43384c" stroke-width="2"/>
+    <circle cx="20" cy="95" r="7" fill="#c9a24b"/><line x1="20" y1="95" x2="90" y2="95" stroke="#c9a24b" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="98" cy="88" r="8" fill="#c9a24b"/>
+    <circle cx="65" cy="45" r="7" fill="#e14e77"/><line x1="65" y1="52" x2="65" y2="80" stroke="#e14e77" stroke-width="5" stroke-linecap="round"/>
+    <line x1="65" y1="80" x2="52" y2="90" stroke="#e14e77" stroke-width="4" stroke-linecap="round"/>
+    <line x1="65" y1="80" x2="78" y2="90" stroke="#e14e77" stroke-width="4" stroke-linecap="round"/></svg>`,
+  loto_inv: `<svg viewBox="0 0 120 120"><line x1="10" y1="100" x2="110" y2="100" stroke="#43384c" stroke-width="2"/>
+    <circle cx="20" cy="95" r="7" fill="#c9a24b"/><line x1="20" y1="95" x2="90" y2="95" stroke="#c9a24b" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="98" cy="88" r="8" fill="#c9a24b"/>
+    <line x1="65" y1="80" x2="65" y2="52" stroke="#e14e77" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="63" cy="44" r="7" fill="#e14e77"/>
+    <line x1="65" y1="80" x2="50" y2="70" stroke="#e14e77" stroke-width="4" stroke-linecap="round"/>
+    <line x1="65" y1="80" x2="80" y2="70" stroke="#e14e77" stroke-width="4" stroke-linecap="round"/></svg>`,
+  mariposa: `<svg viewBox="0 0 120 120"><line x1="10" y1="70" x2="110" y2="70" stroke="#43384c" stroke-width="3"/>
+    <circle cx="35" cy="80" r="7" fill="#e14e77"/><line x1="35" y1="80" x2="75" y2="80" stroke="#e14e77" stroke-width="6" stroke-linecap="round"/>
+    <line x1="75" y1="80" x2="70" y2="55" stroke="#e14e77" stroke-width="4" stroke-linecap="round"/>
+    <line x1="75" y1="80" x2="90" y2="58" stroke="#e14e77" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="90" cy="35" r="8" fill="#c9a24b"/><line x1="90" y1="43" x2="82" y2="65" stroke="#c9a24b" stroke-width="6" stroke-linecap="round"/>
+    <line x1="82" y1="65" x2="72" y2="90" stroke="#c9a24b" stroke-width="5" stroke-linecap="round"/>
+    <line x1="82" y1="65" x2="94" y2="90" stroke="#c9a24b" stroke-width="5" stroke-linecap="round"/></svg>`,
+  cabalgata_r: `<svg viewBox="0 0 120 120"><line x1="10" y1="100" x2="110" y2="100" stroke="#43384c" stroke-width="2"/>
+    <circle cx="20" cy="95" r="7" fill="#c9a24b"/><line x1="20" y1="95" x2="90" y2="95" stroke="#c9a24b" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="98" cy="88" r="8" fill="#c9a24b"/>
+    <line x1="70" y1="82" x2="48" y2="55" stroke="#e14e77" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="44" cy="47" r="7" fill="#e14e77"/>
+    <line x1="70" y1="82" x2="85" y2="92" stroke="#e14e77" stroke-width="4" stroke-linecap="round"/>
+    <line x1="70" y1="82" x2="60" y2="93" stroke="#e14e77" stroke-width="4" stroke-linecap="round"/></svg>`,
+  custom: `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="42" fill="none" stroke="#43384c" stroke-width="2" stroke-dasharray="5,5"/>
+    <circle cx="45" cy="55" r="7" fill="#c9a24b"/><circle cx="75" cy="55" r="7" fill="#e14e77"/>
+    <text x="60" y="90" text-anchor="middle" font-size="10" fill="#9c8ea6">personalizada</text></svg>`,
+};
+
+/* =========================================================================
+   RUEDA — orden pensado para que colores parecidos nunca queden pegados.
+   ========================================================================= */
+const WHEEL_SEGMENTS = [
+  { key:"reto",   label:"RETO",       weight:45,  color:"#b5482e" },
+  { key:"pos",    label:"POSICIÓN",   weight:20,  color:"#2f6f6b" },
+  { key:"verdad", label:"VERDAD",     weight:7.5, color:"#c98a2c" },
+  { key:"doble",  label:"RETO DOBLE", shortLabel:"DOBLE", weight:7.5, color:"#7a1f3d" },
+  { key:"salvo",  label:"A SALVO",    weight:20,  color:"#3d5a80" },
+];
+
+/* =========================================================================
+   ALMACENAMIENTO DE CONTENIDO PERSONALIZADO (localStorage)
+   ========================================================================= */
+const STORAGE_KEY = "ruletaCustomContent_v1";
+function emptyCustom(){
+  return {
+    dares:{1:[],2:[],3:[]}, truths:[], doubles:[], positions:{hombre:[],mujer:[]},
+    excluded:{ dares:{1:[],2:[],3:[]}, truths:[], doubles:[], positions:{hombre:[],mujer:[]} },
+  };
+}
+function loadCustom(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) throw 0;
+    const parsed = JSON.parse(raw);
+    return {
+      dares: { 1: parsed.dares?.[1] || [], 2: parsed.dares?.[2] || [], 3: parsed.dares?.[3] || [] },
+      truths: parsed.truths || [],
+      doubles: parsed.doubles || [],
+      positions: { hombre: parsed.positions?.hombre || [], mujer: parsed.positions?.mujer || [] },
+      excluded: {
+        dares: { 1: parsed.excluded?.dares?.[1] || [], 2: parsed.excluded?.dares?.[2] || [], 3: parsed.excluded?.dares?.[3] || [] },
+        truths: parsed.excluded?.truths || [],
+        doubles: parsed.excluded?.doubles || [],
+        positions: { hombre: parsed.excluded?.positions?.hombre || [], mujer: parsed.excluded?.positions?.mujer || [] },
+      },
+    };
+  } catch(e){
+    return emptyCustom();
+  }
+}
+function saveCustom(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(custom)); }
+  catch(e){ console.warn("No se pudo guardar en localStorage:", e); }
+}
+let custom = loadCustom();
+
+/* =========================================================================
+   MAZOS SIN REPETICIÓN — cada lista se baraja y se va vaciando; al agotarse
+   se vuelve a barajar completa (evitando repetir el último salido).
+   ========================================================================= */
+function shuffle(arr){
+  const a = [...arr];
+  for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+function makeDeck(sourceFn){
+  let queue = [];
+  let last = null;
+  return {
+    draw(){
+      const source = sourceFn();
+      if (source.length === 0) return null;
+      if (queue.length === 0){
+        queue = shuffle(source);
+        if (queue.length > 1 && queue[0] === last) [queue[0], queue[1]] = [queue[1], queue[0]];
+      } else {
+        queue = queue.filter(it => source.includes(it));
+        if (queue.length === 0) queue = shuffle(source);
+      }
+      const item = queue.pop();
+      last = item;
+      return item;
+    }
+  };
+}
+let decks; // se construye en initDecks()
+function initDecks(){
+  decks = {
+    dares: {
+      1: makeDeck(() => [...BUILTIN.dares[1].filter(t=>!custom.excluded.dares[1].includes(t)), ...custom.dares[1]]),
+      2: makeDeck(() => [...BUILTIN.dares[2].filter(t=>!custom.excluded.dares[2].includes(t)), ...custom.dares[2]]),
+      3: makeDeck(() => [...BUILTIN.dares[3].filter(t=>!custom.excluded.dares[3].includes(t)), ...custom.dares[3]]),
+    },
+    truths: makeDeck(() => [...BUILTIN.truths.filter(t=>!custom.excluded.truths.includes(t)), ...custom.truths]),
+    doubles: makeDeck(() => [...BUILTIN.doubles.filter(t=>!custom.excluded.doubles.includes(t)), ...custom.doubles]),
+    positions: {
+      hombre: makeDeck(() => [...BUILTIN.positions.hombre.filter(p=>!custom.excluded.positions.hombre.includes(p.key)), ...custom.positions.hombre]),
+      mujer: makeDeck(() => [...BUILTIN.positions.mujer.filter(p=>!custom.excluded.positions.mujer.includes(p.key)), ...custom.positions.mujer]),
+    },
+  };
+}
+
+/* =========================================================================
+   ESTADO DEL JUEGO
+   ========================================================================= */
+let players = [];
+let currentPlayer = 0;
+let round = 1;
+let spinning = false;
+let awaitingResolution = false;
+
+/* ---- setup screen ---- */
+document.querySelectorAll(".gtoggle").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(`.gtoggle[data-p="${btn.dataset.p}"]`).forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+  });
+});
+
+document.getElementById("startBtn").addEventListener("click", ()=>{
+  const n1 = document.getElementById("p1name").value.trim() || "Jugador 1";
+  const n2 = document.getElementById("p2name").value.trim() || "Jugador 2";
+  const g1 = document.querySelector('.gtoggle[data-p="0"].active').dataset.g;
+  const g2 = document.querySelector('.gtoggle[data-p="1"].active').dataset.g;
+  players = [
+    { name:n1, gender:g1, score:0, lives:{trago:2, fel:3} },
+    { name:n2, gender:g2, score:0, lives:{trago:2, fel:3} },
+  ];
+  currentPlayer = 0; round = 1; awaitingResolution = false;
+  initDecks();
+  document.getElementById("setup").style.display = "none";
+  document.getElementById("game").style.display = "flex";
+  buildWheel();
+  renderAll();
+});
+
+/* =========================================================================
+   RUEDA SVG — segmentos + etiquetas radiales (se leen al llegar arriba)
+   ========================================================================= */
+const CX=150, CY=150, R=145, LABEL_R=122;
+function polar(cx,cy,r,angleDeg){
+  const rad = (angleDeg-0) * Math.PI/180;
+  return { x: cx + r*Math.sin(rad), y: cy - r*Math.cos(rad) };
+}
+function buildWheel(){
+  const g = document.getElementById("wheelGroup");
+  g.innerHTML = "";
+  let acc = 0;
+  WHEEL_SEGMENTS.forEach(seg=>{
+    const start = acc, sweep = (seg.weight/100)*360, end = acc+sweep;
+    const p1 = polar(CX,CY,R,start), p2 = polar(CX,CY,R,end);
+    const largeArc = sweep>180?1:0;
+    const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+    path.setAttribute("d", `M${CX},${CY} L${p1.x},${p1.y} A${R},${R} 0 ${largeArc} 1 ${p2.x},${p2.y} Z`);
+    path.setAttribute("fill", seg.color);
+    path.setAttribute("stroke", "#191320");
+    path.setAttribute("stroke-width", "2");
+    g.appendChild(path);
+
+    const mid = start + sweep/2;
+    const text = document.createElementNS("http://www.w3.org/2000/svg","text");
+    text.setAttribute("x", 0); text.setAttribute("y", 0);
+    text.setAttribute("transform", `translate(${CX},${CY}) rotate(${mid}) translate(0,${-LABEL_R})`);
+    text.setAttribute("text-anchor","middle");
+    text.setAttribute("fill","#fff");
+    text.setAttribute("font-size", seg.weight < 15 ? "9" : "12");
+    text.setAttribute("font-weight","700");
+    text.setAttribute("letter-spacing","0.5");
+    text.textContent = seg.shortLabel || seg.label;
+    g.appendChild(text);
+
+    acc = end;
+  });
+}
+
+/* ---- selección ponderada + rotación coherente ---- */
+function pickCategory(){
+  const r = Math.random()*100; let acc=0;
+  for (const seg of WHEEL_SEGMENTS){ acc += seg.weight; if (r<=acc) return seg; }
+  return WHEEL_SEGMENTS[0];
+}
+function segmentAngles(seg){
+  let acc=0;
+  for (const s of WHEEL_SEGMENTS){
+    const start=acc, end=acc+(s.weight/100)*360;
+    if (s.key===seg.key) return {start,end};
+    acc=end;
+  }
+}
+let currentRotation = 0;
+document.getElementById("spinBtn").addEventListener("click", ()=>{
+  if (spinning || awaitingResolution) return;
+  spinning = true;
+  document.getElementById("spinBtn").disabled = true;
+  document.getElementById("resultPanel").style.display = "none";
+  document.getElementById("lockNote").textContent = "";
+
+  const chosen = pickCategory();
+  const { start, end } = segmentAngles(chosen);
+  const margin = (end-start)*0.15;
+  const targetMid = start + margin + Math.random()*((end-start)-margin*2);
+  const spins = 5 + Math.floor(Math.random()*3);
+  currentRotation = currentRotation - (currentRotation % 360) + spins*360 - targetMid;
+  document.getElementById("wheelGroup").style.transform = `rotate(${currentRotation}deg)`;
+
+  setTimeout(()=>{
+    spinning = false;
+    awaitingResolution = true;
+    document.getElementById("lockNote").textContent = "Resuelve el resultado para poder girar de nuevo.";
+    showResult(chosen);
+  }, 3700);
+});
+
+/* =========================================================================
+   RESOLUCIÓN DE RESULTADOS
+   ========================================================================= */
+function pickLevel(){
+  let w;
+  if (round<=3) w=[70,25,5];
+  else if (round<=6) w=[30,50,20];
+  else w=[10,40,50];
+  const r = Math.random()*100;
+  if (r<w[0]) return 1;
+  if (r<w[0]+w[1]) return 2;
+  return 3;
+}
+const LEVEL_LABEL = {1:"Suave", 2:"Picante", 3:"Atrevido"};
+
+function showResult(seg){
+  const panel = document.getElementById("resultPanel");
+  const dot = document.getElementById("resultDot");
+  const tag = document.getElementById("resultTag");
+  const text = document.getElementById("resultText");
+  const actions = document.getElementById("actions");
+  const timerBox = document.getElementById("timerBox");
+  const levelChip = document.getElementById("levelChip");
+  const posBlock = document.getElementById("posBlock");
+
+  actions.innerHTML = "";
+  timerBox.classList.add("hidden");
+  levelChip.classList.add("hidden");
+  posBlock.classList.add("hidden");
+  panel.style.display = "block";
+  dot.style.background = seg.color;
+  tag.textContent = seg.label;
+
+  const player = players[currentPlayer];
+
+  if (seg.key==="reto"){
+    const level = pickLevel();
+    levelChip.classList.remove("hidden");
+    levelChip.textContent = LEVEL_LABEL[level];
+    text.textContent = decks.dares[level].draw() || "Añade retos en el panel de contenido.";
+    const canTrago = player.lives.trago>0, canFel = player.lives.fel>0;
+    actions.innerHTML = `
+      <button class="confirm" id="doDare">Cumplí el reto (+2)</button>
+      <button id="skipDare" ${(!canTrago && !canFel)?"disabled":""}>No quiero / Skip</button>`;
+    document.getElementById("doDare").onclick = ()=>{ player.score+=2; resolve(); };
+    document.getElementById("skipDare").onclick = ()=> showSkipOptions(player);
+  }
+
+  else if (seg.key==="verdad"){
+    text.textContent = decks.truths.draw() || "Añade preguntas en el panel de contenido.";
+    const canTrago = player.lives.trago>0, canFel = player.lives.fel>0;
+    actions.innerHTML = `
+      <button class="confirm" id="doTruth">Respondí</button>
+      <button id="skipTruth" ${(!canTrago && !canFel)?"disabled":""}>No quiero / Skip</button>`;
+    document.getElementById("doTruth").onclick = ()=> resolve();
+    document.getElementById("skipTruth").onclick = ()=> showSkipOptions(player);
+  }
+
+  else if (seg.key==="salvo"){
+    text.textContent = `${player.name} se salva esta ronda. +1 punto automático.`;
+    player.score += 1;
+    renderAll();
+    actions.innerHTML = `<button class="confirm" id="doSalvo">Continuar</button>`;
+    document.getElementById("doSalvo").onclick = ()=> resolve();
+  }
+
+  else if (seg.key==="doble"){
+    const dareTxt = decks.doubles.draw() || "Añade retos dobles en el panel de contenido.";
+    showDobleStep(dareTxt, [currentPlayer, 1-currentPlayer], 0);
+  }
+
+  else if (seg.key==="pos"){
+    const pos = decks.positions[player.gender].draw();
+    const canTrago = player.lives.trago>0, canFel = player.lives.fel>0;
+    if (!pos){
+      text.textContent = "Añade posiciones en el panel de contenido.";
+      actions.innerHTML = `<button class="confirm" id="doPosSkip">Continuar</button>`;
+      document.getElementById("doPosSkip").onclick = ()=> resolve();
+    } else {
+      posBlock.classList.remove("hidden");
+      document.getElementById("posName").textContent = pos.name;
+      document.getElementById("posDiagram").innerHTML = POS_DIAGRAMS[pos.key] || POS_DIAGRAMS.custom;
+      text.textContent = pos.desc + " Mantengan la posición 1 minuto.";
+      timerBox.classList.remove("hidden");
+      let t = 60;
+      document.getElementById("timerDisplay").textContent = t;
+      actions.innerHTML = `
+        <button id="timerStartBtn">Iniciar cronómetro</button>
+        <button class="confirm hidden" id="posDoneBtn">Completado (+1)</button>
+        <button id="skipPos" ${(!canTrago && !canFel)?"disabled":""}>No quiero / Skip</button>`;
+      document.getElementById("timerStartBtn").onclick = function(){
+        this.disabled = true;
+        const iv = setInterval(()=>{
+          t--; document.getElementById("timerDisplay").textContent = t;
+          if (t<=0){ clearInterval(iv); document.getElementById("posDoneBtn").classList.remove("hidden"); }
+        },1000);
+      };
+      document.getElementById("posDoneBtn").onclick = ()=>{ player.score+=1; resolve(); };
+      document.getElementById("skipPos").onclick = ()=> showSkipOptions(player);
+    }
+  }
+}
+
+/* ---- Reto Doble: obligatorio en el sentido de que a AMBOS les toca decidir,
+   pero cada quien puede cumplir o skipear su propia parte (igual que el resto). ---- */
+function showDobleStep(dareTxt, order, step){
+  const p = players[order[step]];
+  document.getElementById("resultTag").textContent = `RETO DOBLE · ${p.name} (${step+1}/2)`;
+  document.getElementById("resultText").textContent = dareTxt;
+  const canTrago = p.lives.trago>0, canFel = p.lives.fel>0;
+  const actions = document.getElementById("actions");
+  actions.innerHTML = `
+    <button class="confirm" id="doDobleStep">Cumplió (+2)</button>
+    <button id="skipDobleStep" ${(!canTrago && !canFel)?"disabled":""}>No quiere / Skip</button>`;
+  const advance = ()=> step===0 ? showDobleStep(dareTxt, order, 1) : resolve();
+  document.getElementById("doDobleStep").onclick = ()=>{ p.score+=2; renderAll(); advance(); };
+  document.getElementById("skipDobleStep").onclick = ()=> showSkipOptions(p, advance);
+}
+
+function showSkipOptions(player, onDone){
+  onDone = onDone || resolve;
+  const actions = document.getElementById("actions");
+  const canTrago = player.lives.trago>0, canFel = player.lives.fel>0;
+  actions.innerHTML = `
+    <button class="sub" id="subTrago" ${!canTrago?"disabled":""}>Trago (${player.lives.trago} rest.)</button>
+    <button class="sub" id="subFel" ${!canFel?"disabled":""}>Felación 30s (${player.lives.fel} rest.)</button>`;
+  document.getElementById("subTrago").onclick = ()=>{ player.lives.trago--; renderAll(); onDone(); };
+  document.getElementById("subFel").onclick = ()=>{ player.lives.fel--; renderAll(); onDone(); };
+}
+
+function resolve(){
+  awaitingResolution = false;
+  document.getElementById("spinBtn").disabled = false;
+  document.getElementById("lockNote").textContent = "";
+  currentPlayer = 1-currentPlayer;
+  round++;
+  document.getElementById("resultPanel").style.display = "none";
+  renderAll();
+}
+
+/* =========================================================================
+   RENDER SCOREBOARD
+   ========================================================================= */
+const ICON_TRAGO = `<svg class="life-icon" viewBox="0 0 24 24" fill="none" stroke="#c9a24b" stroke-width="2"><path d="M6 3h12l-1.5 8a4.5 4.5 0 0 1-9 0L6 3z"/><line x1="12" y1="15" x2="12" y2="21"/><line x1="8" y1="21" x2="16" y2="21"/></svg>`;
+const ICON_FEL = `<svg class="life-icon" viewBox="0 0 24 24" fill="none" stroke="#e14e77" stroke-width="2"><path d="M3 9c3-4 7-4 9 0 2-4 6-4 9 0-2 5-6 8-9 10-3-2-7-5-9-10z"/></svg>`;
+
+function renderAll(){
+  players.forEach((p,i)=>{
+    document.getElementById(`name${i}`).textContent = p.name;
+    document.getElementById(`score${i}`).textContent = p.score;
+    document.getElementById(`box${i}`).classList.toggle("turn", i===currentPlayer);
+    const el = document.getElementById(`lives${i}`);
+    el.innerHTML = "";
+    for(let t=0;t<2;t++) el.insertAdjacentHTML("beforeend", `<span class="${t<p.lives.trago?'':'spent'}">${ICON_TRAGO}</span>`);
+    for(let f=0;f<3;f++) el.insertAdjacentHTML("beforeend", `<span class="${f<p.lives.fel?'':'spent'}">${ICON_FEL}</span>`);
+  });
+  document.getElementById("turnName").textContent = players[currentPlayer]?.name || "—";
+  document.getElementById("roundNum").textContent = round;
+}
+
+/* =========================================================================
+   MODAL genérico (fin de partida / gestor de contenido)
+   ========================================================================= */
+function openModal(html){
+  document.getElementById("modalContent").innerHTML = html;
+  document.getElementById("modalOverlay").style.display = "flex";
+}
+function closeModal(){ document.getElementById("modalOverlay").style.display = "none"; }
+document.getElementById("modalCloseBtn").addEventListener("click", closeModal);
+document.getElementById("modalOverlay").addEventListener("click", (e)=>{ if (e.target.id==="modalOverlay") closeModal(); });
+
+document.getElementById("endGameBtn").addEventListener("click", ()=>{
+  const [p1,p2] = players;
+  if (p1.score===p2.score){
+    openModal(`<h2>Empate</h2><p>${p1.score} - ${p2.score}. ¡Ronda de desempate!</p>`);
+  } else {
+    const winner = p1.score>p2.score?p1:p2;
+    openModal(`
+      <h2>${winner.name} gana</h2>
+      <p>Puntaje final: ${p1.name} ${p1.score} — ${p2.name} ${p2.score}</p>
+      <p>${winner.name} elige su premio:</p>
+      <button class="prize-btn" onclick="closeModal()">Que le inviten la próxima comida</button>
+      <button class="prize-btn" onclick="closeModal()">Decide qué hará el otro, sin poder negarse</button>
+    `);
+  }
+});
+
+document.getElementById("resetBtn").addEventListener("click", ()=>{
+  document.getElementById("game").style.display = "none";
+  document.getElementById("setup").style.display = "block";
+  document.getElementById("resultPanel").style.display = "none";
+});
+
+/* =========================================================================
+   GESTOR DE CONTENIDO — añadir / borrar / exportar / importar
+   ========================================================================= */
+function contentManagerHTML(){
+  return `
+    <h2>Contenido de la ruleta</h2>
+    <div class="cm-tabs">
+      <button class="btn plain active" id="tabAddBtn" data-tab="add">Añadir</button>
+      <button class="btn plain" id="tabAllBtn" data-tab="all">Ver todos los retos</button>
+    </div>
+
+    <div id="cmTabAdd">
+      <div class="cm-row">
+        <select id="cmCategory">
+          <option value="reto">Reto</option>
+          <option value="verdad">Verdad</option>
+          <option value="doble">Reto Doble</option>
+          <option value="pos">Posición</option>
+        </select>
+        <select id="cmLevel">
+          <option value="1">Suave</option>
+          <option value="2">Picante</option>
+          <option value="3">Atrevido</option>
+        </select>
+      </div>
+      <div class="cm-row hidden" id="cmPosRow">
+        <select id="cmGender"><option value="hombre">Requiere más de él</option><option value="mujer">Requiere más de ella</option></select>
+        <input type="text" id="cmName" placeholder="Nombre de la posición">
+      </div>
+      <textarea id="cmText" placeholder="Escribe el texto del reto / pregunta / descripción..."></textarea>
+      <button class="btn" id="cmAddBtn" style="margin-top:10px;">Añadir a la ruleta</button>
+
+      <div class="cm-section-title">Tus retos personalizados</div>
+      <div class="cm-list" id="cmList"></div>
+
+      <div class="cm-actions">
+        <button class="btn plain" id="cmExportBtn">Exportar</button>
+        <button class="btn plain" id="cmImportBtn">Importar</button>
+        <input type="file" id="cmImportFile" accept="application/json" class="hidden">
+      </div>
+    </div>
+
+    <div id="cmTabAll" class="hidden">
+      <p style="font-size:.8rem; color:var(--muted); margin-top:0;">Todo lo que puede salir en la ruleta: lo que yo puse y lo tuyo. Puedes quitar de la ruleta lo que no te guste (sin borrarlo) o borrar lo tuyo.</p>
+      <div class="cm-all-list" id="cmAllList"></div>
+    </div>
+  `;
+}
+
+function toggleInArr(arr, val){ const i=arr.indexOf(val); if(i>=0) arr.splice(i,1); else arr.push(val); saveCustom(); }
+
+function renderCmList(){
+  const list = document.getElementById("cmList");
+  if (!list) return;
+  const rows = [];
+  [1,2,3].forEach(lvl=>{
+    custom.dares[lvl].forEach((txt,idx)=> rows.push({tag:`Reto · ${LEVEL_LABEL[lvl]}`, txt, del:()=>{ custom.dares[lvl].splice(idx,1); saveCustom(); renderCmList(); renderAllList(); }}));
+  });
+  custom.truths.forEach((txt,idx)=> rows.push({tag:"Verdad", txt, del:()=>{ custom.truths.splice(idx,1); saveCustom(); renderCmList(); renderAllList(); }}));
+  custom.doubles.forEach((txt,idx)=> rows.push({tag:"Reto Doble", txt, del:()=>{ custom.doubles.splice(idx,1); saveCustom(); renderCmList(); renderAllList(); }}));
+  ["hombre","mujer"].forEach(g=>{
+    custom.positions[g].forEach((p,idx)=> rows.push({tag:`Posición · ${g}`, txt:`${p.name} — ${p.desc}`, del:()=>{ custom.positions[g].splice(idx,1); saveCustom(); renderCmList(); renderAllList(); }}));
+  });
+  if (rows.length===0){ list.innerHTML = `<div class="cm-empty">Aún no has añadido retos personalizados.</div>`; return; }
+  list.innerHTML = rows.map((r,i)=>`
+    <div class="cm-item">
+      <div><span class="tag">${r.tag}</span>${r.txt}</div>
+      <button data-i="${i}">✕</button>
+    </div>`).join("");
+  list.querySelectorAll("button[data-i]").forEach((btn,i)=> btn.onclick = ()=> rows[i].del());
+}
+
+function renderAllList(){
+  const container = document.getElementById("cmAllList");
+  if (!container) return;
+
+  const sections = [];
+  [1,2,3].forEach(lvl=>{
+    sections.push({
+      title: `Reto · ${LEVEL_LABEL[lvl]} (${BUILTIN.dares[lvl].length + custom.dares[lvl].length})`,
+      items: [
+        ...BUILTIN.dares[lvl].map(txt=>({
+          txt, builtin:true, excluded: custom.excluded.dares[lvl].includes(txt),
+          toggle: ()=>{ toggleInArr(custom.excluded.dares[lvl], txt); renderAllList(); },
+        })),
+        ...custom.dares[lvl].map((txt,idx)=>({
+          txt, builtin:false,
+          del: ()=>{ custom.dares[lvl].splice(idx,1); saveCustom(); renderAllList(); renderCmList(); },
+        })),
+      ],
+    });
+  });
+  sections.push({
+    title: `Verdad (${BUILTIN.truths.length + custom.truths.length})`,
+    items: [
+      ...BUILTIN.truths.map(txt=>({
+        txt, builtin:true, excluded: custom.excluded.truths.includes(txt),
+        toggle: ()=>{ toggleInArr(custom.excluded.truths, txt); renderAllList(); },
+      })),
+      ...custom.truths.map((txt,idx)=>({
+        txt, builtin:false,
+        del: ()=>{ custom.truths.splice(idx,1); saveCustom(); renderAllList(); renderCmList(); },
+      })),
+    ],
+  });
+  sections.push({
+    title: `Reto Doble (${BUILTIN.doubles.length + custom.doubles.length})`,
+    items: [
+      ...BUILTIN.doubles.map(txt=>({
+        txt, builtin:true, excluded: custom.excluded.doubles.includes(txt),
+        toggle: ()=>{ toggleInArr(custom.excluded.doubles, txt); renderAllList(); },
+      })),
+      ...custom.doubles.map((txt,idx)=>({
+        txt, builtin:false,
+        del: ()=>{ custom.doubles.splice(idx,1); saveCustom(); renderAllList(); renderCmList(); },
+      })),
+    ],
+  });
+  ["hombre","mujer"].forEach(g=>{
+    sections.push({
+      title: `Posición · requiere más de ${g==="hombre"?"él":"ella"} (${BUILTIN.positions[g].length + custom.positions[g].length})`,
+      items: [
+        ...BUILTIN.positions[g].map(p=>({
+          txt: `${p.name} — ${p.desc}`, builtin:true, excluded: custom.excluded.positions[g].includes(p.key),
+          toggle: ()=>{ toggleInArr(custom.excluded.positions[g], p.key); renderAllList(); },
+        })),
+        ...custom.positions[g].map((p,idx)=>({
+          txt: `${p.name} — ${p.desc}`, builtin:false,
+          del: ()=>{ custom.positions[g].splice(idx,1); saveCustom(); renderAllList(); renderCmList(); },
+        })),
+      ],
+    });
+  });
+
+  container.innerHTML = sections.map((sec,si)=>`
+    <div class="cm-section-title">${sec.title}</div>
+    ${sec.items.length===0 ? `<div class="cm-empty">Sin contenido.</div>` : sec.items.map((it,ii)=>`
+      <div class="cm-item ${it.excluded?'excluded':''}">
+        <div>${it.txt}</div>
+        ${it.builtin
+          ? `<button class="toggle" data-s="${si}" data-i="${ii}" data-act="toggle">${it.excluded?'Incluir':'Quitar'}</button>`
+          : `<button data-s="${si}" data-i="${ii}" data-act="del">✕</button>`}
+      </div>`).join("")}
+  `).join("");
+
+  container.querySelectorAll("button[data-act]").forEach(btn=>{
+    const sec = sections[+btn.dataset.s];
+    const item = sec.items[+btn.dataset.i];
+    btn.onclick = ()=> (btn.dataset.act==="toggle" ? item.toggle() : item.del());
+  });
+}
+
+function openContentManager(){
+  openModal(contentManagerHTML());
+  const catSel = document.getElementById("cmCategory");
+  const lvlSel = document.getElementById("cmLevel");
+  const posRow = document.getElementById("cmPosRow");
+  function syncFields(){
+    lvlSel.classList.toggle("hidden", catSel.value!=="reto");
+    posRow.classList.toggle("hidden", catSel.value!=="pos");
+  }
+  catSel.addEventListener("change", syncFields);
+  syncFields();
+
+  document.getElementById("tabAddBtn").addEventListener("click", ()=>{
+    document.getElementById("tabAddBtn").classList.add("active");
+    document.getElementById("tabAllBtn").classList.remove("active");
+    document.getElementById("cmTabAdd").classList.remove("hidden");
+    document.getElementById("cmTabAll").classList.add("hidden");
+  });
+  document.getElementById("tabAllBtn").addEventListener("click", ()=>{
+    document.getElementById("tabAllBtn").classList.add("active");
+    document.getElementById("tabAddBtn").classList.remove("active");
+    document.getElementById("cmTabAll").classList.remove("hidden");
+    document.getElementById("cmTabAdd").classList.add("hidden");
+    renderAllList();
+  });
+
+  document.getElementById("cmAddBtn").addEventListener("click", ()=>{
+    const cat = catSel.value;
+    const txt = document.getElementById("cmText").value.trim();
+    if (!txt){ return; }
+    if (cat==="reto"){
+      custom.dares[lvlSel.value].push(txt);
+    } else if (cat==="verdad"){
+      custom.truths.push(txt);
+    } else if (cat==="doble"){
+      custom.doubles.push(txt);
+    } else if (cat==="pos"){
+      const name = document.getElementById("cmName").value.trim() || "Posición personalizada";
+      const gender = document.getElementById("cmGender").value;
+      custom.positions[gender].push({ key:"custom", name, desc:txt });
+    }
+    saveCustom();
+    document.getElementById("cmText").value = "";
+    document.getElementById("cmName") && (document.getElementById("cmName").value = "");
+    renderCmList();
+  });
+
+  document.getElementById("cmExportBtn").addEventListener("click", ()=>{
+    const blob = new Blob([JSON.stringify(custom,null,2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "mis-retos.json"; a.click();
+    URL.revokeObjectURL(url);
+  });
+  document.getElementById("cmImportBtn").addEventListener("click", ()=> document.getElementById("cmImportFile").click());
+  document.getElementById("cmImportFile").addEventListener("change", (e)=>{
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{
+        const data = JSON.parse(reader.result);
+        [1,2,3].forEach(lvl=>{ custom.dares[lvl] = [...custom.dares[lvl], ...(data.dares?.[lvl]||[])]; });
+        custom.truths = [...custom.truths, ...(data.truths||[])];
+        custom.doubles = [...custom.doubles, ...(data.doubles||[])];
+        custom.positions.hombre = [...custom.positions.hombre, ...(data.positions?.hombre||[])];
+        custom.positions.mujer = [...custom.positions.mujer, ...(data.positions?.mujer||[])];
+        saveCustom();
+        renderCmList();
+      } catch(err){ alert("Archivo inválido."); }
+    };
+    reader.readAsText(file);
+  });
+
+  renderCmList();
+}
+document.getElementById("openManagerFromSetup").addEventListener("click", openContentManager);
+document.getElementById("openManagerFromGame").addEventListener("click", openContentManager);
+</script>
+</body>
+</html>
